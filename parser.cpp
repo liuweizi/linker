@@ -48,7 +48,7 @@ analyzer::~analyzer() {}
 
 void analyzer::parse(char* expr){
   pExpr = expr; //Why do a pExpr
-  while(!*pExpr){
+  while(*pExpr){
     nextLine();
   }
 }
@@ -112,6 +112,7 @@ void analyzer::nextLine(){
 
 
 void analyzer::nextToken(){
+  // TODO
   char* bucket = token;
   *bucket = '\0';
   while(!isspace(*pExpr)){
@@ -140,15 +141,16 @@ int main(int argc, const char *argv[])
 {
   char* buffer;
   FILE *fh = fopen("input", "r");
-  fseek(fh, 0L, SEEK_END);
+  fseek(fh, 0, SEEK_END);
   long s = ftell(fh);
+  fseek(fh, 0, SEEK_SET);
   buffer = (char*)malloc(s);
   fread(buffer, s, 1, fh);
+  fclose(fh);
 
   analyzer alz;
   alz.parse(buffer);
 
   free(buffer);
-  fclose(fh);
   return 0;
 }
