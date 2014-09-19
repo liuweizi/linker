@@ -42,6 +42,7 @@ class analyzer{
 analyzer::analyzer(){
   std::cout << "analyzer built." << std::endl;
   pExpr = NULL;
+  module_start.push_back(0);
 }
 
 analyzer::~analyzer() {}
@@ -72,14 +73,11 @@ void analyzer::nextLine(){
   while(1){
     if( *pExpr == '\n'){ // next line
       pExpr++;
+      std::cout << "Finish one line." << std::endl;
       break;
     }
     nextToken();
     n_token ++;
-    if(*token == '0'){
-      std::cout << "New module." << std::endl;
-      break;
-    }
     if(!lineType){
       // judge
       if(strchr("AERI", *token)){
@@ -96,10 +94,12 @@ void analyzer::nextLine(){
   }
   if(lineType != OPEADD){ // var assign
     switch(flag){
-      case true:
+      case true:{}
         lineType = VARASSIGN;
+        break;
       case false:
         lineType = OPECODEASSIGN;
+        break;
     }
   }
   switch(lineType){
@@ -110,9 +110,11 @@ void analyzer::nextLine(){
       sprintf(value, "%d", atof(token)+module_start.back());
       Symbol sym(var_name, VARIABLE, Integer, value);
       sym.PrintOutSym();
+      break;
       }
     case OPEADD:
       module_start.push_back(module_start.back() + n_token / 2);
+      break;
   }
 }
 
@@ -135,6 +137,7 @@ void analyzer::nextToken(){
   }else{
     serror(1);
   }
+  std::cout << "Finish one token." << std::endl;
 }
 
 
