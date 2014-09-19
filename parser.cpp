@@ -8,7 +8,7 @@
 using namespace std;
 
 enum lintTypes{
-  VARASSIGN = 0,
+  VARASSIGN = 1,
   OPECODEASSIGN,
   OPEADD
 };
@@ -59,6 +59,7 @@ void analyzer::nextLine(){
   // 2. get the module number
   // 3. parse the variable
   //
+  lineType = 0;
   nextToken();
   if(tokenType != NUMBER){
     serror(0);
@@ -66,9 +67,13 @@ void analyzer::nextLine(){
   }
   int buffer = atof(token);
   int n_token = 0;
-  bool flag = true;
+  bool flag = false;
   char* var_name;
-  while(*pExpr != 9){
+  while(1){
+    if( *pExpr == '\n'){ // next line
+      pExpr++;
+      break;
+    }
     nextToken();
     n_token ++;
     if(*token == '0'){
@@ -89,7 +94,7 @@ void analyzer::nextLine(){
       }
     }
   }
-  if(!lineType){
+  if(lineType != OPEADD){ // var assign
     switch(flag){
       case true:
         lineType = VARASSIGN;
@@ -101,6 +106,7 @@ void analyzer::nextLine(){
     case VARASSIGN:
       {
       char value[33];
+      std::cout << "var" << std::endl;
       sprintf(value, "%d", atof(token)+module_start.back());
       Symbol sym(var_name, VARIABLE, Integer, value);
       sym.PrintOutSym();
@@ -118,9 +124,13 @@ void analyzer::nextToken(){
   while(!isspace(*pExpr)){
     *bucket++ = *pExpr++;
   }
-  if(isalpha(*bucket)){
+  if(*pExpr != '\n'){
+    pExpr++; // skip the space except \n
+  }
+  *bucket = '\0';
+  if(isalpha(*token)){
     tokenType = VARIABLE;
-  }else if(isdigit(*bucket)){
+  }else if(isdigit(*token)){
     tokenType = NUMBER;
   }else{
     serror(1);
