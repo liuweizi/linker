@@ -8,7 +8,7 @@
 using namespace std;
 
 enum lintTypes{
-  VARASSIGN = 0,
+  VARASSIGN = 1,
   OPECODEASSIGN,
   OPEADD
 };
@@ -42,6 +42,7 @@ class analyzer{
 analyzer::analyzer(){
   std::cout << "analyzer built." << std::endl;
   pExpr = NULL;
+  module_start.push_back(0);
 }
 
 analyzer::~analyzer() {}
@@ -59,6 +60,7 @@ void analyzer::nextLine(){
   // 2. get the module number
   // 3. parse the variable
   //
+  lineType = 0;
   nextToken();
   if(tokenType != NUMBER){
     serror(0);
@@ -66,15 +68,16 @@ void analyzer::nextLine(){
   }
   int buffer = atof(token);
   int n_token = 0;
-  bool flag = true;
+  bool flag = false;
   char* var_name;
-  while(*pExpr != 9){
-    nextToken();
-    n_token ++;
-    if(*token == '0'){
-      std::cout << "New module." << std::endl;
+  while(1){
+    if( *pExpr == '\n'){ // next line
+      pExpr++;
+      std::cout << "Finish one line." << std::endl;
       break;
     }
+    nextToken();
+    n_token ++;
     if(!lineType){
       // judge
       if(strchr("AERI", *token)){
@@ -89,24 +92,29 @@ void analyzer::nextLine(){
       }
     }
   }
-  if(!lineType){
+  if(lineType != OPEADD){ // var assign
     switch(flag){
-      case true:
+      case true:{}
         lineType = VARASSIGN;
+        break;
       case false:
         lineType = OPECODEASSIGN;
+        break;
     }
   }
   switch(lineType){
     case VARASSIGN:
       {
       char value[33];
+      std::cout << "var" << std::endl;
       sprintf(value, "%d", atof(token)+module_start.back());
       Symbol sym(var_name, VARIABLE, Integer, value);
       sym.PrintOutSym();
+      break;
       }
     case OPEADD:
       module_start.push_back(module_start.back() + n_token / 2);
+      break;
   }
 }
 
@@ -118,13 +126,18 @@ void analyzer::nextToken(){
   while(!isspace(*pExpr)){
     *bucket++ = *pExpr++;
   }
-  if(isalpha(*bucket)){
+  if(*pExpr != '\n'){
+    pExpr++; // skip the space except \n
+  }
+  *bucket = '\0';
+  if(isalpha(*token)){
     tokenType = VARIABLE;
-  }else if(isdigit(*bucket)){
+  }else if(isdigit(*token)){
     tokenType = NUMBER;
   }else{
     serror(1);
   }
+  std::cout << "Finish one token." << std::endl;
 }
 
 
