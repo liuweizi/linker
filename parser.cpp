@@ -16,7 +16,7 @@ enum lintTypes{
 class analyzer{
  private:
   //
-  char token[100];
+  char token[80];
   int tokenType;
   int lineType;
   char* pExpr;
@@ -55,7 +55,6 @@ void analyzer::parse(char* expr){
 }
 
 void analyzer::nextLine(){
-  // Re-organize this part
   // 1. judge the lineType
   // 2. get the module number
   // 3. parse the variable
@@ -69,11 +68,10 @@ void analyzer::nextLine(){
   int buffer = atof(token);
   int n_token = 0;
   bool flag = false;
-  char* var_name;
+  char var_name[100];
   while(1){
     if( *pExpr == '\n'){ // next line
       pExpr++;
-      std::cout << "Finish one line." << std::endl;
       break;
     }
     nextToken();
@@ -84,17 +82,28 @@ void analyzer::nextLine(){
         lineType = OPEADD;
       } 
       else{
-        if(tokenType == VARIABLE && n_token == 1){
-          var_name = token;
-          flag = true;
-        } 
-        if(tokenType == NUMBER && n_token == 2) flag = flag && true;
+        switch(n_token){
+          case 1:
+            {
+              char* bucket = var_name;
+              char* t_bucket = token;
+              while(*t_bucket){
+                *bucket++ = *t_bucket++;
+              }
+              *bucket = '\0';
+              flag = tokenType == VARIABLE;
+              break;
+            }
+          case 2:
+            flag = (tokenType == NUMBER) && flag;
+        }
       }
     }
   }
+  if(n_token == 1) flag = false; // in case there are only one token that line
   if(lineType != OPEADD){ // var assign
     switch(flag){
-      case true:{}
+      case true:
         lineType = VARASSIGN;
         break;
       case false:
@@ -106,8 +115,7 @@ void analyzer::nextLine(){
     case VARASSIGN:
       {
       char value[33];
-      std::cout << "var" << std::endl;
-      sprintf(value, "%d", atof(token)+module_start.back());
+      sprintf(value, "%d", atoi(token)+module_start.back());
       Symbol sym(var_name, VARIABLE, Integer, value);
       sym.PrintOutSym();
       break;
@@ -120,13 +128,13 @@ void analyzer::nextLine(){
 
 
 void analyzer::nextToken(){
-  // TODO
   char* bucket = token;
   *bucket = '\0';
   while(!isspace(*pExpr)){
     *bucket++ = *pExpr++;
   }
-  if(*pExpr != '\n'){
+  if(!strchr("\n\r", *pExpr)){
+  //if(*pExpr != '\n'){
     pExpr++; // skip the space except \n
   }
   *bucket = '\0';
@@ -135,9 +143,12 @@ void analyzer::nextToken(){
   }else if(isdigit(*token)){
     tokenType = NUMBER;
   }else{
+    if(*pExpr == '\r'){
+      std::cout << "Ends." << std::endl;
+      exit(1);
+    }
     serror(1);
   }
-  std::cout << "Finish one token." << std::endl;
 }
 
 
