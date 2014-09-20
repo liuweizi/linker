@@ -3,18 +3,19 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstdio>
+#include <cassert>
 #include "symbol_table.hpp"
 
 using namespace std;
 
-enum lintTypes{
+enum lineTypes{
   VARASSIGN = 1,
   OPECODEASSIGN,
   OPEADD
 };
 
 enum AddType{
-  RELATIVE,
+  RELATIVE = 1,
   ABSOLUTE,
   IMEDIATE,
   EXTERNAL
@@ -33,8 +34,8 @@ class analyzer{
   char* pExpr_srt;
 
   // second pass
-  vector<int> lineTypePass;
-  vector<int>::iterator itlnType;
+  vector<lineTypes> lineTypePass;
+  vector<lineTypes>::iterator itlnType;
   vector<string> ope_buffer;
   int n_add;
   int addtype;
@@ -46,6 +47,7 @@ class analyzer{
 
   // second pass
   void nextLineSecond();
+  void substitute(char* , string);
 
 
    
@@ -75,8 +77,10 @@ void analyzer::parse(char* expr){
 void analyzer::addmap(char* expr){
   pExpr = expr;
   it = module_start.begin();
-  while(itlnType++ != lineTypePass.end()){
+  itlnType = lineTypePass.begin();
+  while(itlnType != lineTypePass.end()){
     nextLineSecond();
+    itlnType++;
   }
 }
 
@@ -148,13 +152,14 @@ void analyzer::nextLineFirst(){
       sprintf(value, "%d", atoi(token)+module_start.back());
       Symbol sym(var_name, VARIABLE, Integer, value);
       sym.PrintOutSym();
+      st.symbols.push_back(sym);
       break;
       }
     case OPEADD:
       module_start.push_back(module_start.back() + n_token / 2);
       break;
   }
-  lineTypePass.push_back(lineType);
+  lineTypePass.push_back(lineTypes(lineType));
 }
 
 
@@ -165,6 +170,10 @@ void analyzer::nextLineSecond(){
     serror(0);
     return;
   }
+  if(*token == 0){
+    while(*pExpr++ != '\n') {}
+    return;
+  }
   int buffer = atof(token);
   int n_token = 0;
   bool flag = false;
@@ -172,7 +181,7 @@ void analyzer::nextLineSecond(){
   switch(*itlnType){
     case VARASSIGN:
       while(*pExpr++!='\n') {}
-      return;
+      break;
     case OPECODEASSIGN:
       while(*pExpr != '\n'){
         nextToken();
@@ -180,6 +189,7 @@ void analyzer::nextLineSecond(){
         ope_buffer.push_back(string(token));
       }
       pExpr++;
+      break;
     case OPEADD:
       vector<string>::iterator it_ext = ope_buffer.begin();
       while(*pExpr != '\n'){
@@ -206,30 +216,52 @@ void analyzer::nextLineSecond(){
         }
         nextToken();
         switch(addtype){
-          case('R'):
+          case(RELATIVE):
             std::cout << *it+atoi(token) << std::endl;
             break;
-          case('A'):
+          case(ABSOLUTE):
             std::cout << atoi(token) << std::endl;
             break;
-          case('E'):
+          case(EXTERNAL):
             for (int i = 0; i < st.symbols.size(); i++) { // scan
               if(st.symbols[i].GetName() == *it_ext){
-                st.symbols[i].GetValue(); // TODO substitute *token function?
+                substitute(token, st.symbols[i].GetValue());
+                it_ext++;
                 break;
               }
             }
-
-            std::cout << "TODO"  << std::endl;
+            std::cout << token << std::endl;
             break;
-          case('I'):
+          case(IMEDIATE):
             std::cout << atoi(token) << std::endl;
             break;
         }
       }
-      pExpr++;
+      //pExpr++;
       it++;
+      ope_buffer.resize(0);
+      if(*pExpr == '\n')
+        pExpr++;
+      break;
     }
+}
+
+void analyzer::substitute(char* t, string str){
+  int sz = str.size();
+  assert(sz < 4);
+  if(sz == 3){
+    *(t+1) = str[0];
+    *(t+2) = str[1];
+    *(t+3) = str[2];
+  }else if(sz == 2){
+    *(t+1) = '0';
+    *(t+2) = str[0];
+    *(t+3) = str[1];
+  }else{
+    *(t+1) = '0';
+    *(t+2) = '0';
+    *(t+3) = str[0];
+  }
 }
 
 void analyzer::nextToken(){
@@ -247,6 +279,8 @@ void analyzer::nextToken(){
     tokenType = VARIABLE;
   }else if(isdigit(*token)){
     tokenType = NUMBER;
+  }else if(*token == 0){
+    // Doing nothing
   }else{
     if(*pExpr == '\r'){  // TODO three times
       std::cout << "Ends." << std::endl;
@@ -278,7 +312,9 @@ int main(int argc, const char *argv[])
   fclose(fh);
 
   analyzer alz;
+  std::cout << "=================First pass================" << std::endl;
   alz.parse(buffer); // Not safe! const!
+  std::cout << "=================Second pass================" << std::endl;
   alz.addmap(buffer); // Not safe! const!
 
   free(buffer);
