@@ -13,6 +13,13 @@ enum lintTypes{
   OPEADD
 };
 
+enum AddType{
+  RELATIVE,
+  ABSOLUTE,
+  IMEDIATE,
+  EXTERNAL
+};
+
 class analyzer{
  private:
   //
@@ -22,14 +29,23 @@ class analyzer{
   char* pExpr;
   SymbolTable st;
   vector<int> module_start;
+  vector<int>::iterator it;
   char* pExpr_srt;
 
+  // second pass
+  vector<int> lineTypePass;
+  vector<int>::iterator itlnType;
+  vector<string> ope_buffer;
+  int n_add;
+  int addtype;
+
   // first pass
-  void nextLine();
+  void nextLineFirst();
   void nextToken();
   void serror(int);
 
   // second pass
+  void nextLineSecond();
 
 
    
@@ -37,24 +53,35 @@ class analyzer{
   analyzer();
   ~analyzer();
   void parse(char* expr); //entry of the parser
+  void addmap(char* expr);
 };
 
 analyzer::analyzer(){
   std::cout << "analyzer built." << std::endl;
   pExpr = NULL;
   module_start.push_back(0);
+  n_add = 0;
 }
 
 analyzer::~analyzer() {}
 
 void analyzer::parse(char* expr){
   pExpr = expr; //Why do a pExpr
-  while(*pExpr){
-    nextLine();
+  while(*pExpr != '\r'){ // TODO three times
+    nextLineFirst();
   }
 }
 
-void analyzer::nextLine(){
+void analyzer::addmap(char* expr){
+  pExpr = expr;
+  it = module_start.begin();
+  while(itlnType++ != lineTypePass.end()){
+    nextLineSecond();
+  }
+}
+
+
+void analyzer::nextLineFirst(){
   // 1. judge the lineType
   // 2. get the module number
   // 3. parse the variable
@@ -75,6 +102,9 @@ void analyzer::nextLine(){
       break;
     }
     nextToken();
+    if( *pExpr == '\r'){// TODO three times
+      return;
+    }
     n_token ++;
     if(!lineType){
       // judge
@@ -103,7 +133,7 @@ void analyzer::nextLine(){
   if(n_token == 1) flag = false; // in case there are only one token that line
   if(lineType != OPEADD){ // var assign
     switch(flag){
-      case true:
+;    case true:
         lineType = VARASSIGN;
         break;
       case false:
@@ -124,8 +154,83 @@ void analyzer::nextLine(){
       module_start.push_back(module_start.back() + n_token / 2);
       break;
   }
+  lineTypePass.push_back(lineType);
 }
 
+
+void analyzer::nextLineSecond(){
+  lineType = 0;
+  nextToken();
+  if(tokenType != NUMBER){
+    serror(0);
+    return;
+  }
+  int buffer = atof(token);
+  int n_token = 0;
+  bool flag = false;
+  char var_name[100];
+  switch(*itlnType){
+    case VARASSIGN:
+      while(*pExpr++!='\n') {}
+      return;
+    case OPECODEASSIGN:
+      while(*pExpr != '\n'){
+        nextToken();
+        n_token++;
+        ope_buffer.push_back(string(token));
+      }
+      pExpr++;
+    case OPEADD:
+      vector<string>::iterator it_ext = ope_buffer.begin();
+      while(*pExpr != '\n'){
+        nextToken();
+        n_token++;
+        switch(*token){
+          case('R'):
+            // relative
+            addtype = RELATIVE;
+            std::cout << n_add++ << ": ";
+            break;
+          case('A'):
+            addtype = ABSOLUTE;
+            std::cout << n_add++ << ": ";
+            break;
+          case('E'):
+            addtype = EXTERNAL;
+            std::cout << n_add++ << ": ";
+            break;
+          case('I'):
+            addtype = IMEDIATE;
+            std::cout << n_add++ << ": ";
+            break;
+        }
+        nextToken();
+        switch(addtype){
+          case('R'):
+            std::cout << *it+atoi(token) << std::endl;
+            break;
+          case('A'):
+            std::cout << atoi(token) << std::endl;
+            break;
+          case('E'):
+            for (int i = 0; i < st.symbols.size(); i++) { // scan
+              if(st.symbols[i].GetName() == *it_ext){
+                st.symbols[i].GetValue(); // TODO substitute *token function?
+                break;
+              }
+            }
+
+            std::cout << "TODO"  << std::endl;
+            break;
+          case('I'):
+            std::cout << atoi(token) << std::endl;
+            break;
+        }
+      }
+      pExpr++;
+      it++;
+    }
+}
 
 void analyzer::nextToken(){
   char* bucket = token;
@@ -143,9 +248,9 @@ void analyzer::nextToken(){
   }else if(isdigit(*token)){
     tokenType = NUMBER;
   }else{
-    if(*pExpr == '\r'){
+    if(*pExpr == '\r'){  // TODO three times
       std::cout << "Ends." << std::endl;
-      exit(1);
+      return;
     }
     serror(1);
   }
@@ -173,7 +278,8 @@ int main(int argc, const char *argv[])
   fclose(fh);
 
   analyzer alz;
-  alz.parse(buffer);
+  alz.parse(buffer); // Not safe! const!
+  alz.addmap(buffer); // Not safe! const!
 
   free(buffer);
   return 0;
