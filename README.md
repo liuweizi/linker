@@ -7,7 +7,7 @@ Get started
 ---
 In terminal, type:
 
-g++ -Wall -std=c+11 parser.cpp -o linker
+g++ -Wall -std=c+11 src/parser.cpp -o linker
 
 ./linker
 
