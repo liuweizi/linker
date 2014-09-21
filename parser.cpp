@@ -23,11 +23,12 @@ enum AddType{
 
 class analyzer{
  private:
-  //
   char token[80];
   int tokenType;
   int lineType;
   char* pExpr;
+  
+  // first pass/
   SymbolTable st;
   vector<int> module_start;
   vector<int>::iterator it;
@@ -40,36 +41,39 @@ class analyzer{
   int n_add;
   int addtype;
 
-  // first pass
+  // first pass function
   void nextLineFirst();
   void nextToken();
   void serror(int);
 
-  // second pass
+  // second pass function
   void nextLineSecond();
   void substitute(char* , string);
-
-
    
  public:
   analyzer();
   ~analyzer();
-  void parse(char* expr); //entry of the parser
-  void addmap(char* expr);
+  void parse(char* expr); //entry of the first pass
+  void addmap(char* expr); // entry ofthe second pass
 };
 
+
 analyzer::analyzer(){
+  // construction
   std::cout << "analyzer built." << std::endl;
   pExpr = NULL;
   module_start.push_back(0);
   n_add = 0;
 }
 
+
 analyzer::~analyzer() {}
 
+
 void analyzer::parse(char* expr){
+  // first pass parser
   pExpr = expr; //Why do a pExpr
-  while(*pExpr != '\r'){ // TODO three times
+  while(*pExpr){
     nextLineFirst();
   }
 }
@@ -80,7 +84,6 @@ void analyzer::addmap(char* expr){
   itlnType = lineTypePass.begin();
   while(itlnType != lineTypePass.end()){
     nextLineSecond();
-    itlnType++;
   }
 }
 
@@ -106,12 +109,9 @@ void analyzer::nextLineFirst(){
       break;
     }
     nextToken();
-    if( *pExpr == '\r'){// TODO three times
-      return;
-    }
     n_token ++;
     if(!lineType){
-      // judge
+      // judge lineType
       if(strchr("AERI", *token)){
         lineType = OPEADD;
       } 
@@ -136,18 +136,15 @@ void analyzer::nextLineFirst(){
   }
   if(n_token == 1) flag = false; // in case there are only one token that line
   if(lineType != OPEADD){ // var assign
-    switch(flag){
-;    case true:
-        lineType = VARASSIGN;
-        break;
-      case false:
-        lineType = OPECODEASSIGN;
-        break;
-    }
+    if(flag)
+      lineType = VARASSIGN;
+    else
+      lineType = OPECODEASSIGN;
   }
+  // Use the lineType
   switch(lineType){
     case VARASSIGN:
-      {
+      { // Parse the variable
       char value[33];
       sprintf(value, "%d", atoi(token)+module_start.back());
       Symbol sym(var_name, VARIABLE, Integer, value);
@@ -156,9 +153,11 @@ void analyzer::nextLineFirst(){
       break;
       }
     case OPEADD:
+      // get the module number.
       module_start.push_back(module_start.back() + n_token / 2);
       break;
   }
+  // save lineType
   lineTypePass.push_back(lineTypes(lineType));
 }
 
@@ -170,15 +169,11 @@ void analyzer::nextLineSecond(){
     serror(0);
     return;
   }
-  if(*token == 0){
-    while(*pExpr++ != '\n') {}
-    return;
-  }
   int buffer = atof(token);
   int n_token = 0;
   bool flag = false;
   char var_name[100];
-  switch(*itlnType){
+  switch(*itlnType++){
     case VARASSIGN:
       while(*pExpr++!='\n') {}
       break;
@@ -223,21 +218,23 @@ void analyzer::nextLineSecond(){
             std::cout << atoi(token) << std::endl;
             break;
           case(EXTERNAL):
+          {
             for (int i = 0; i < st.symbols.size(); i++) { // scan
               if(st.symbols[i].GetName() == *it_ext){
                 substitute(token, st.symbols[i].GetValue());
-                it_ext++;
+                if(it_ext != ope_buffer.end()-1)
+                  it_ext++; // in case -- one variable assigning multiple ope-address.
                 break;
               }
             }
             std::cout << token << std::endl;
             break;
+          }
           case(IMEDIATE):
             std::cout << atoi(token) << std::endl;
             break;
         }
       }
-      //pExpr++;
       it++;
       ope_buffer.resize(0);
       if(*pExpr == '\n')
@@ -270,7 +267,7 @@ void analyzer::nextToken(){
   while(!isspace(*pExpr)){
     *bucket++ = *pExpr++;
   }
-  if(!strchr("\n\r", *pExpr)){
+  if(!strchr("\n", *pExpr)){
   //if(*pExpr != '\n'){
     pExpr++; // skip the space except \n
   }
@@ -282,10 +279,6 @@ void analyzer::nextToken(){
   }else if(*token == 0){
     // Doing nothing
   }else{
-    if(*pExpr == '\r'){  // TODO three times
-      std::cout << "Ends." << std::endl;
-      return;
-    }
     serror(1);
   }
 }
